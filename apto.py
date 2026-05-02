@@ -3,8 +3,8 @@ from supabase import create_client, Client
 import uuid
 
 # --- CONFIGURACIÓN ---
-SUPABASE_URL = "https://tu-proyecto.supabase.co"
-SUPABASE_KEY = "tu-anon-key"
+SUPABASE_URL = "https://dygisihrrhlseadmatyw.supabase.co"
+SUPABASE_KEY = "sb_publishable_3MrkEx1y1VUNFmH9KJ8QVQ_SuppvyGw"
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 st.set_page_config(page_title="Gestión de Obras Pro", layout="wide")
@@ -18,6 +18,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
+
 # --- FUNCIONES DE SOPORTE ---
 def upload_imgs(files, arreglo_id, tipo):
     for file in files:
@@ -26,6 +27,21 @@ def upload_imgs(files, arreglo_id, tipo):
         supabase.storage.from_("obras_images").upload(path, file.getvalue(), {"content-type": file.type})
         url = supabase.storage.from_("obras_images").get_public_url(path)
         supabase.table("fotos_arreglo").insert({"arreglo_id": arreglo_id, "url_foto": url, "tipo_foto": tipo}).execute()
+
+# --- DIÁLOGO PARA VER IMAGEN ---
+@st.dialog("Vista Previa")
+def ver_imagen(url, foto_id, storage_path):
+    st.image(url, use_container_width=True)
+    if st.button("🗑️ Eliminar Permanente", type="primary"):
+        # 1. Borrar de la tabla
+        supabase.table("fotos_arreglo").delete().eq("id", foto_id).execute()
+        # 2. Borrar del Storage (extrayendo el path relativo)
+        # Nota: el path debe ser el relativo dentro del bucket
+        path_in_storage = url.split("public/obras_images/")[-1]
+        supabase.storage.from_("obras_images").remove([path_in_storage])
+        st.success("Foto eliminada.")
+        st.rerun()
+
 
 # --- INTERFAZ ---
 st.title("🚧 Control de Obras y Propuestas Granulares")
@@ -115,3 +131,35 @@ elif choice == "Proveedores":
             if st.form_submit_button("Enviar Oferta"):
                 supabase.table("propuestas").insert({"arreglo_id": sel_arr['id'], "proveedor_id": sel_prov['id'], "monto_propuesto": monto}).execute()
                 st.success("Propuesta vinculada al arreglo.")
+
+# --- VISUALIZACIÓN DE FOTOS CON CLICK ---
+def mostrar_galeria(arreglo_id, tipo):
+    fotos = supabase.table("fotos_arreglo").select("*").eq("arreglo_id", arreglo_id).eq("tipo_foto", tipo).execute()
+    if fotos.data:
+        cols = st.columns(4)
+        for i, f in enumerate(fotos.data):
+            with cols[i % 4]:
+                # Usamos un botón con imagen o el estilo zoom
+                st.markdown(f'<img src="{f["url_foto"]}" style="width:100%; border-radius:5px; cursor:pointer;">', unsafe_allow_html=True)
+                if st.button("🔍 Ver/Borrar", key=f"btn_{f['id']}"):
+                    ver_imagen(f['url_foto'], f['id'], f['url_foto'])
+
+# --- SECCIÓN PROVEEDORES ---
+st.divider()
+st.header("🤝 Gestión de Proveedores")
+
+with st.expander("Registrar Nuevo Proveedor"):
+    with st.form("nuevo_prov"):
+        nombre = st.text_input("Nombre de Empresa / Profesional")
+        especialidad = st.text_input("Especialidad (ej. Plomería)")
+        if st.form_submit_button("Registrar"):
+            supabase.table("proveedores").insert({"nombre_empresa": nombre, "especialidad": especialidad}).execute()
+            st.success("Proveedor registrado")
+            st.rerun()
+
+# Mostrar proveedores y sus propuestas
+provs = supabase.table("proveedores").select("*").execute()
+if provs.data:
+    for p in provs.data:
+        st.write(f"**{p['nombre_empresa']}** - {p['especialidad']}")
+        # Aquí puedes añadir un selectbox para asignar este proveedor a un arreglo
