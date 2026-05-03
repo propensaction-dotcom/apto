@@ -146,7 +146,7 @@ if obras.data:
     else:
         st.info("No hay obras registradas o no tienes permisos para verlas.")
         if user_rol == "admin":
-        st.write("Verifica que la tabla 'construcciones' tenga datos y que el RLS esté configurado.")
+            st.write("Verifica que la tabla 'construcciones' tenga datos y que el RLS esté configurado.")
 # --- SECCIÓN: PROVEEDORES Y PROPUESTAS ---
 st.divider()
 st.header("🤝 Proveedores y Propuestas")
