@@ -97,8 +97,13 @@ if user_rol == "admin":
 
 # Listar Obras
 obras = supabase.table("construcciones").select("*").execute()
+
 if obras.data:
-    obra_sel = st.selectbox("Selecciona Obra", options=obras.data, format_func=lambda x: x["nombre"])
+    obra_sel = st.selectbox(
+        "Selecciona Obra", 
+        options=obras.data, 
+        format_func=lambda x: x.get("nombre", "Sin nombre")
+    )
     
     # Partes de la Obra
     st.subheader(f"Partes de: {obra_sel['nombre']}")
@@ -138,6 +143,10 @@ if obras.data:
                             }).execute()
                             st.rerun()
 
+    else:
+        st.info("No hay obras registradas o no tienes permisos para verlas.")
+        if user_rol == "admin":
+        st.write("Verifica que la tabla 'construcciones' tenga datos y que el RLS esté configurado.")
 # --- SECCIÓN: PROVEEDORES Y PROPUESTAS ---
 st.divider()
 st.header("🤝 Proveedores y Propuestas")
